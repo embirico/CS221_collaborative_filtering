@@ -1,0 +1,27 @@
+# Filesystem
+.DS_Store
+
+# Python
+*.pyc
+
+# Ouputs
+*.out
+
+# LaTeX
+*.aux
+*.fdb_latexmk
+*.log
+*.pdf
+*.synctex.gz
+
+# Data
+*.tar.gz
+
+# Graphics
+*.jpg
+*.png
+
+# Documentation
+*.html
+*.css
+*.js
