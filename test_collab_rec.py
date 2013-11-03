@@ -45,20 +45,27 @@ guideToDataMiningUsers = {
 
 class TestDataImportFunctions(unittest.TestCase):
 
-  tempDataFilename = 'data/unittest_temp_data.txt'
+  tempDataFilename = 'data/unittest_temp_data.pickle'
 
   def setUp(self):
-    self.users = cr.importUserPlays('data/practice_data_50.txt')
-    cr.saveData(self.users, self.tempDataFilename)
+    self.userPlays = cr.importUserPlays('data/practice_data_50.txt')
+    self.userPlayComp = cr.importUserPlaysAndLikesComposite(
+      'data/practice_data_50.txt', 1, 10)
+    cr.saveData(self.userPlays, self.tempDataFilename)
 
   def test_importUserPlays(self):
-    self.assertEqual(14, len(self.users[2]))
-    self.assertEqual(1, self.users[65][6])
-    self.assertEqual(1, self.users[65][423])
-    self.assertFalse(8 in self.users[65])
+    self.assertEqual(14, len(self.userPlays[2]))
+    self.assertEqual(1, self.userPlays[65][6])
+    self.assertEqual(1, self.userPlays[65][423])
+    self.assertFalse(8 in self.userPlays[65])
+
+  def test_importUserPlaysAndLikesComposite(self):
+    self.assertEqual(14, len(self.userPlayComp[2]))
+    self.assertEqual(12, self.userPlayComp[58][387])
+    self.assertEqual(-9, self.userPlayComp[1][1002])
 
   def test_saveData_loadData(self):
-    self.assertEqual(self.users,
+    self.assertEqual(self.userPlays,
       cr.loadData(self.tempDataFilename))
 
   def tearDown(self):
@@ -110,6 +117,9 @@ class TestDistanceMetrics(unittest.TestCase):
     self.assertEqual(4, cr.numMutuallyScoredItems(
       self.otherUsers['Dan'], self.otherUsers['Hailey']))
     self.assertEqual(2, cr.numMutuallyScoredItems(self.alan, self.robert))
+
+  def test_sumCommonScore(self):
+    self.assertAlmostEqual(5.0, cr.sumCommonScore(self.alan, self.clara))
 
 
 class TestRecommenderClass(unittest.TestCase):

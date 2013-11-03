@@ -4,10 +4,12 @@
 # http://guidetodatamining.com/
 
 import pickle # Loading and saving of complex data types
+#TODO consider using cpickle instead
 from collections import defaultdict # Sparse dict representation
 from collections import Counter # Sparse vector representation
 from math import sqrt
 import numpy as np
+import time
 
 
 # Data import export helpers ----------------------------------------
@@ -41,6 +43,45 @@ def importUserPlays(filename):
 				gameId, numPlays = f.readline().split()
 				userPlays[userId][int(gameId)] = int(numPlays)
 	return userPlays
+
+def importUserPlaysAndLikesComposite(filename,
+	playPoints=1, likePoints=10):
+	"""
+	Get dict of Counters of how a user rates a game.
+	Each play of a game counts as |playPoints| points.
+	Each like of a game counts as |likePoints| points.
+	Each dislike of a game counts as -|likePoints| points.
+	"""
+	userRatings = {}
+	with open(filename, 'r') as f:
+		while True:
+			line = f.readline()
+			if not line: break # EOF
+			line = line.strip()
+			if not line: continue # We can ignore empty lines
+			userId = int(line)
+			userRatings[userId] = Counter()
+			f.readline() # skip line 'likes'
+			numLikes = int(f.readline())
+			f.readline() # skip blank line
+			for _ in range(numLikes):
+				gameId = f.readline()
+				userRatings[userId][int(gameId)] += likePoints
+			f.readline() # skip blank line
+			f.readline() # skip line 'dislikes'
+			numDislikes = int(f.readline())
+			f.readline() # skip blank line
+			for _ in range(numDislikes):
+				gameId = f.readline()
+				userRatings[userId][int(gameId)] -= likePoints
+			f.readline() # skip blank line
+			f.readline() # skip line 'plays'
+			numPlayedGames = int(f.readline())
+			f.readline() # skip blank line
+			for _ in range(numPlayedGames):
+				gameId, numPlays = f.readline().split()
+				userRatings[userId][int(gameId)] += int(numPlays) * playPoints
+	return userRatings
 
 def importDataRatio(filename):
 	"""Get dict of Counters of percent of time a user has played each game."""
@@ -90,7 +131,7 @@ def pearsonCorrelation(user1, user2):
 	denominator = (sqrt(sum_x2 - pow(sum_x, 2) / n)
 	         * sqrt(sum_y2 - pow(sum_y, 2) / n))
 	if denominator == 0:
-	  return 0
+		return 0
 	else:
 		return (sum_xy - (sum_x * sum_y) / n) / denominator
 
@@ -143,6 +184,18 @@ def numMutuallyScoredItems(user1, user2):
 	Used with Recommender, set lowDistMeansDissimilar=True.
 	"""
 	return len(set(user1.keys()) & set(user2.keys()))
+
+def sumCommonScore(user1, user2):
+	"""
+	Returns the sum of minimum scores for items both users have rated.
+
+	Used with Recommender, set lowDistMeansDissimilar=True.
+	"""
+	correlation = 0.0
+	for itemId in user1:
+		if itemId in user2:
+			correlation += min(user1[itemId], user2[itemId])
+	return correlation
 
 
 # Recommender class -------------------------------------------------
@@ -212,15 +265,70 @@ class Recommender(object):
 													key=lambda (_, dist): dist,
 													reverse=self.lowDistMeansDissimilar)
 		return recsDistsList if nRecs < 0 else recsDistsList[:nRecs]
+
+	def recommendForEveryUser(self, nRecs):
+		"""
+		Returns a dict of no more than |nRecs| recommendations for each user
+		in the dataset.
+
+		TODO consider returning exactly |nRecs| recs of each user.
+		TODO consider creating a set of default recs.
+		"""
+		return {user : self.recommend(user, nRecs)[0] for user in self.users}
 		
+
+# Mini helpers ------------------------------------------------------
+def getGameInfo():
+	gameInfoDict = loadData('data/game_info.pickle')
+	gameInfo = defaultdict(lambda: ('??', '??'))
+	for x in gameInfoDict:
+		gameInfo[x] = gameInfoDict[x]
+	return gameInfo
+
+def testRecommenderForUser(tgtUserId, rec, userRatings, gameInfo):
+	print 'USER {} HAS RATED...'.format(tgtUserId)
+	for gameId in userRatings[tgtUserId]:
+		print '{} : {} : {}'.format(gameInfo[gameId][0], gameInfo[gameId][1],
+			userRatings[tgtUserId][gameId])
+	print 'AND WE RECOMMEND...'
+	for gameId in rec.recommend(tgtUserId, 6):
+		print '{} : {}'.format(gameInfo[gameId][0], gameInfo[gameId][1])
+	print
+
+def test1():
+	gameInfo = getGameInfo()
+	userRatings = importUserPlaysAndLikesComposite('data/practice_data_50.txt')
+	rec = Recommender(userRatings, cosineSimilarity, True, 6)
+	testRecommenderForUser(5, rec, userRatings, gameInfo)
+	testRecommenderForUser(20, rec, userRatings, gameInfo)
+	testRecommenderForUser(28, rec, userRatings, gameInfo)
+	testRecommenderForUser(31, rec, userRatings, gameInfo)
+
+def test2():
+	gameInfo = getGameInfo()
+	userRatings = importUserPlaysAndLikesComposite('data/practice_data_6623.txt')
+	rec = Recommender(userRatings, numMutuallyScoredItems, True, 6)
+	testRecommenderForUser(29410, rec, userRatings, gameInfo)
+	testRecommenderForUser(8675, rec, userRatings, gameInfo)
+	testRecommenderForUser(27452, rec, userRatings, gameInfo)
+	testRecommenderForUser(33790, rec, userRatings, gameInfo)
+
+def testCachingOnLargeFile():
+	t = time.time()
+	userRatings = importUserPlaysAndLikesComposite('data/practice_data_6623.txt')
+	print 'Importing txt data took {}s'.format(time.time() - t)
+	rec = Recommender(userRatings, numMutuallyScoredItems, True, 6)
+	t = time.time()
+	recsCache = rec.recommendForEveryUser(6)
+	print 'Creating cache object took {}s'.format(time.time() - t)
+	t = time.time()
+	saveData(recsCache, 'data/recs_cache.pickle')
+	print 'Saving recs_cache.pickle took {}s'.format(time.time() - t)
+
 
 # Main script -------------------------------------------------------
 if __name__ == '__main__':
-	userPlays = importUserPlays('data/practice_data_50.txt')
+	testCachingOnLargeFile()
 
-	recommender = Recommender(userPlays, cosineSimilarity, True, 6)
-	# recommender = Recommender(userPlays, numMutuallyScoredItems, True, 6)
-	# recommender = Recommender(userPlays, manhattanDistance, False, 6)
-	# recommender = Recommender(userPlays, pearsonCorrelation, True, 6)
-	print 'recs {}'.format(recommender.recommend(1, 5))
-	print 'done'
+
+
