@@ -3,6 +3,11 @@
 # Note: much of the |Recommender| class code is based off of an example on
 # http://guidetodatamining.com/
 
+DESCRIPTION_STRING = """
+Script to be run every now and then to cache results for faster
+recommending on the site.
+"""
+
 import pickle # Loading and saving of complex data types
 #TODO consider using cpickle instead
 from collections import defaultdict # Sparse dict representation
@@ -10,6 +15,7 @@ from collections import Counter # Sparse vector representation
 from math import sqrt
 import numpy as np
 import time
+import argparse
 
 
 # Data import export helpers ----------------------------------------
@@ -87,11 +93,6 @@ def importDataRatio(filename):
 	"""Get dict of Counters of percent of time a user has played each game."""
 	# TODO
 	pass
-
-def saveData(data, filename):
-	"""Save |data| object to |filename|."""
-	with open(filename, 'w') as f:
-		pickle.dump(data, f)
 
 def loadData(filename):
 	"""Returns the object saved with |saveData()|."""
@@ -275,66 +276,69 @@ class Recommender(object):
 		return {user : zip(*self.recommend(user, nRecs))[0] for user in self.users}
 		
 
-# Mini helpers ------------------------------------------------------
-def getGameInfo():
-	gameInfoDict = loadData('data/game_info.pickle')
-	gameInfo = defaultdict(lambda: ('??', '??'))
-	for x in gameInfoDict:
-		gameInfo[x] = gameInfoDict[x]
-	return gameInfo
+# Main script files -------------------------------------------------
 
-def testRecommenderForUser(tgtUserId, rec, userRatings, gameInfo):
-	print 'USER {} HAS RATED...'.format(tgtUserId)
-	for gameId in userRatings[tgtUserId]:
-		print '{} : {} : {}'.format(gameInfo[gameId][0], gameInfo[gameId][1],
-			userRatings[tgtUserId][gameId])
-	print
-	print 'AND WE RECOMMEND...'
-	for gameId, _ in rec.recommend(tgtUserId, 6):
-		print '{} : {}'.format(gameInfo[gameId][0], gameInfo[gameId][1])
-	print
-	print
-
-def test1():
-	gameInfo = getGameInfo()
-	userRatings = importUserPlaysAndLikesComposite('data/practice_data_50.txt')
-	rec = Recommender(userRatings, cosineSimilarity, True, 6)
-	testRecommenderForUser(5, rec, userRatings, gameInfo)
-	testRecommenderForUser(20, rec, userRatings, gameInfo)
-	testRecommenderForUser(28, rec, userRatings, gameInfo)
-	testRecommenderForUser(31, rec, userRatings, gameInfo)
-
-def test2():
-	gameInfo = getGameInfo()
-	userRatings = importUserPlaysAndLikesComposite('data/practice_data_6623.txt')
-	rec = Recommender(userRatings, numMutuallyScoredItems, True, 6)
-	testRecommenderForUser(29410, rec, userRatings, gameInfo)
-	testRecommenderForUser(8675, rec, userRatings, gameInfo)
-	testRecommenderForUser(27452, rec, userRatings, gameInfo)
-	testRecommenderForUser(33790, rec, userRatings, gameInfo)
-
-def testCachingOnLargeFile():
+def cacheRecsForFile(distanceMetric, dataFile, outputFile, verbose=False):
 	t = time.time()
-	userRatings = importUserPlaysAndLikesComposite('data/practice_data_6623.txt')
-	print 'Importing txt data took {}s'.format(time.time() - t)
-	rec = Recommender(userRatings, sumCommonScore, True, 6)
+	userRatings = importUserPlaysAndLikesComposite(dataFile)
+	if verbose:
+		print
+		print 'Importing txt data from {} took {}s'.format(dataFile, time.time() - t)
+	rec = Recommender(userRatings, distanceMetric, True, 6)
 	t = time.time()
 	recsCache = rec.recommendForEveryUser(6)
-	print 'Creating cache object took {}s'.format(time.time() - t)
+	if verbose:
+		print 'Creating cache object for {} took {}s'.format(outputFile, time.time() - t)
 	t = time.time()
-	saveData(recsCache, 'data/recs_cache.pickle')
-	print 'Saving recs_cache.pickle took {}s'.format(time.time() - t)
+	pickle.dump(recsCache, open(outputFile, 'w'))
+	if verbose:
+		print 'Saving {} took {}s'.format(outputFile, time.time() - t)
+		print
 
-def testCacheLoading():
-	t = time.time()
-	cache = loadData('data/recs_cache.pickle')
-	print 'Loading data took {}s'.format(time.time() - t)
+def main(args):
+	distMetrics = []
 
+	if args.pearson_correlation:
+		distMetrics.append((pearsonCorrelation, 'pearson_correlation'))
+	if args.manhattan_distance:
+		distMetrics.append((manhattanDistance, 'manhattan_distance'))
+	if args.euclidean_distance:
+		distMetrics.append((euclideanDistance, 'euclidean_distance'))
+	if args.cosine_similarity:
+		distMetrics.append((cosineSimilarity, 'cosine_similarity'))
+	if args.num_mutually_scored_items:
+		distMetrics.append((numMutuallyScoredItems, 'num_mutually_scored_items'))
+	if args.sum_common_score:
+		distMetrics.append((sumCommonScore, 'sum_common_score'))
 
-# Main script -------------------------------------------------------
+	if len(distMetrics) == 0:
+		print 'Choose at least one distance metric'
+
+	for distMetric, name in distMetrics:
+		outFileName = args.output_file_root + '_' + name + '.pickle'
+		cacheRecsForFile(distMetric, args.data_file, outFileName, args.verbose)
+
 if __name__ == '__main__':
-	testCachingOnLargeFile()
-	# test2()
+	parser = argparse.ArgumentParser(description=DESCRIPTION_STRING)
+	parser.add_argument('data_file', type=str,
+		help='Raw data file mapping userIds to interactions with gameIds')
+	parser.add_argument('output_file_root', type=str,
+		help='Output file will be named output_file_root + metric + .pickle')
+	parser.add_argument('--pearson_correlation', action='store_true',
+		help='Store results for this distance metric')
+	parser.add_argument('--manhattan_distance', action='store_true',
+		help='Store results for this distance metric')
+	parser.add_argument('--euclidean_distance', action='store_true',
+		help='Store results for this distance metric')
+	parser.add_argument('--cosine_similarity', action='store_true',
+		help='Store results for this distance metric')
+	parser.add_argument('--num_mutually_scored_items', action='store_true',
+		help='Store results for this distance metric')
+	parser.add_argument('--sum_common_score', action='store_true',
+		help='Store results for this distance metric')
+	parser.add_argument('--verbose', action='store_true')
+	args = parser.parse_args()
+	main(args)
 
 
 

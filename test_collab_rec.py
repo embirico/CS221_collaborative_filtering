@@ -5,6 +5,7 @@ import os
 import collab_rec as cr
 from math import sqrt
 from collections import Counter
+import pickle
 
 guideToDataMiningUsers = {
   "Angelica": Counter({"Blues Traveler": 3.5, "Broken Bells": 2.0,
@@ -51,7 +52,7 @@ class TestDataImportFunctions(unittest.TestCase):
     self.userPlays = cr.importUserPlays('data/practice_data_50.txt')
     self.userPlayComp = cr.importUserPlaysAndLikesComposite(
       'data/practice_data_50.txt', 1, 10)
-    cr.saveData(self.userPlays, self.tempDataFilename)
+    pickle.dump(self.userPlays, open(self.tempDataFilename, 'w'))
 
   def test_importUserPlays(self):
     self.assertEqual(14, len(self.userPlays[2]))
@@ -66,7 +67,7 @@ class TestDataImportFunctions(unittest.TestCase):
 
   def test_saveData_loadData(self):
     self.assertEqual(self.userPlays,
-      cr.loadData(self.tempDataFilename))
+      pickle.load(open(self.tempDataFilename, 'r')))
 
   def tearDown(self):
     os.remove(self.tempDataFilename)
