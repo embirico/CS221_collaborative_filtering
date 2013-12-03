@@ -100,40 +100,40 @@ class TestDistanceMetrics(unittest.TestCase):
     self.otherUsers = guideToDataMiningUsers
 
   def test_pearsonCorrelation(self):
-    self.assertAlmostEqual(1.0, cr.pearsonCorrelation(self.clara, self.robert))
+    self.assertAlmostEqual(1.0, cr.PearsonCorrelation().dm(self.clara, self.robert))
 
   def test_manhattanDistance(self):
-    self.assertAlmostEqual(4.0, cr.manhattanDistance(self.alan, self.robert))
+    self.assertAlmostEqual(4.0, cr.ManhattanDistance().dm(self.alan, self.robert))
 
   def test_euclideanDistance(self):
-    self.assertAlmostEqual(sqrt(18.5), cr.euclideanDistance(
+    self.assertAlmostEqual(sqrt(18.5), cr.EuclideanDistance().dm(
       self.otherUsers['Angelica'], self.otherUsers['Bill']))
 
   def test_cosineSimilarity(self):
     self.assertAlmostEqual(70.0/(sqrt(101.875)*sqrt(55)),
-      cr.cosineSimilarity(self.clara, self.robert))
+      cr.CosineSimilarity().dm(self.clara, self.robert))
 
   def test_numMutuallyScoredItems(self):
-    self.assertEqual(5, cr.numMutuallyScoredItems(self.clara, self.robert))
-    self.assertEqual(4, cr.numMutuallyScoredItems(
+    self.assertEqual(5, cr.NumMutuallyScoredItems().dm(self.clara, self.robert))
+    self.assertEqual(4, cr.NumMutuallyScoredItems().dm(
       self.otherUsers['Dan'], self.otherUsers['Hailey']))
-    self.assertEqual(2, cr.numMutuallyScoredItems(self.alan, self.robert))
+    self.assertEqual(2, cr.NumMutuallyScoredItems().dm(self.alan, self.robert))
 
   def test_sumCommonScore(self):
-    self.assertAlmostEqual(5.0, cr.sumCommonScore(self.alan, self.clara))
+    self.assertAlmostEqual(5.0, cr.SumCommonScore().dm(self.alan, self.clara))
 
 
 class TestRecommenderClass(unittest.TestCase):
 
   def setUp(self):
     self.manhattanR = cr.Recommender(guideToDataMiningUsers,
-        cr.manhattanDistance, False, 7)
+        cr.ManhattanDistance(), 7)
     self.euclideanR = cr.Recommender(guideToDataMiningUsers,
-        cr.euclideanDistance, False, 4)
+        cr.EuclideanDistance(), 4)
     self.pearsonR = cr.Recommender(guideToDataMiningUsers,
-        cr.pearsonCorrelation, True, 6)
+        cr.PearsonCorrelation(), 6)
     self.cosineR = cr.Recommender(guideToDataMiningUsers,
-        cr.cosineSimilarity, True, 6)
+        cr.CosineSimilarity(), 6)
 
   def test_nearestNeighbors(self):
     self.assertEqual(
@@ -143,6 +143,10 @@ class TestRecommenderClass(unittest.TestCase):
     )
 
   def test_basic_recommend(self):
+    print
+    print """This test will expects Recommender to not recommend items that
+    the target user has already seen. Could if it fails with Vampire Weekend,
+    it's still working but Recommender is not skipping already-seen items..."""
     self.assertEqual('Blues Traveler',
                       self.manhattanR.recommend('Jordyn',1)[0][0])
     self.assertEqual('Blues Traveler',

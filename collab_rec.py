@@ -101,102 +101,125 @@ def loadData(filename):
 
 
 # User to user distance metrics -------------------------------------
-def pearsonCorrelation(user1, user2):
-	"""
-	Returns the Pearson Correlation Coefficient btw 2 users.
+class PearsonCorrelation():
+	def __init__(self):
+		self.lowDistMeansDissimilar = True
 
-	|user1|, |user2| are Counters where keys are itemIds and values are scores.
-	Code taken from http://guidetodatamining.com with minimal modification.
-	TODO see if this actually works
-	Used with Recommender, set lowDistMeansDissimilar=True.
-	"""
-	sum_xy = 0
-	sum_x = 0
-	sum_y = 0
-	sum_x2 = 0
-	sum_y2 = 0
-	n = 0
-	for key in user1:
-	  if key in user2:
-	    n += 1
-	    x = user1[key]
-	    y = user2[key]
-	    sum_xy += x * y
-	    sum_x += x
-	    sum_y += y
-	    sum_x2 += pow(x, 2)
-	    sum_y2 += pow(y, 2)
-	if n == 0:
-	  return 0
-	# now compute denominator
-	denominator = (sqrt(sum_x2 - pow(sum_x, 2) / n)
-	         * sqrt(sum_y2 - pow(sum_y, 2) / n))
-	if denominator == 0:
-		return 0
-	else:
-		return (sum_xy - (sum_x * sum_y) / n) / denominator
+	def dm(self, user1, user2):
+		"""
+		Returns the Pearson Correlation Coefficient btw 2 users.
 
-def manhattanDistance(user1, user2):
-	"""
-	Returns the Manhattan distance btw 2 users.
+		|user1|, |user2| are Counters where keys are itemIds and values are scores.
+		Code taken from http://guidetodatamining.com with minimal modification.
+		TODO see if this actually works
+		Used with Recommender, set lowDistMeansDissimilar=True.
+		"""
+		sum_xy = 0
+		sum_x = 0
+		sum_y = 0
+		sum_x2 = 0
+		sum_y2 = 0
+		n = 0
+		for key in user1:
+		  if key in user2:
+		    n += 1
+		    x = user1[key]
+		    y = user2[key]
+		    sum_xy += x * y
+		    sum_x += x
+		    sum_y += y
+		    sum_x2 += pow(x, 2)
+		    sum_y2 += pow(y, 2)
+		if n == 0:
+		  return 0
+		# now compute denominator
+		denominator = (sqrt(sum_x2 - pow(sum_x, 2) / n)
+		         * sqrt(sum_y2 - pow(sum_y, 2) / n))
+		if denominator == 0:
+			return 0
+		else:
+			return (sum_xy - (sum_x * sum_y) / n) / denominator
 
-	|user1|, |user2| are Counters where keys are itemIds and values are scores.
-	Code taken from http://guidetodatamining.com with minimal modification.
-	Used with Recommender, set lowDistMeansDissimilar=False.
-	"""
-	dist = 0
-	for itemId in user1:
-		if itemId in user2:
-			dist += abs(user1[itemId] - user2[itemId]) 
-	return dist 
+class ManhattanDistance():
+	def __init__(self):
+		self.lowDistMeansDissimilar = False
 
+	def dm(self, user1, user2):
+		"""
+		Returns the Manhattan distance btw 2 users.
 
-def euclideanDistance(user1, user2):
-	"""
-	Returns the Euclidean distance btw 2 users.
+		|user1|, |user2| are Counters where keys are itemIds and values are scores.
+		Code taken from http://guidetodatamining.com with minimal modification.
+		Used with Recommender, set lowDistMeansDissimilar=False.
+		"""
+		dist = 0
+		for itemId in user1:
+			if itemId in user2:
+				dist += abs(user1[itemId] - user2[itemId]) 
+		return dist 
 
-	|user1|, |user2| are Counters where keys are itemIds and values are scores.
-	Used with Recommender, set lowDistMeansDissimilar=False.
-	"""
-	distSquared = 0
-	for itemId in user1:
-		if itemId in user2:
-			distSquared += (user1[itemId] - user2[itemId])**2
-	return sqrt(distSquared)
+class EuclideanDistance():
+	def __init__(self):
+		self.lowDistMeansDissimilar = False
 
-def cosineSimilarity(user1, user2):
-	"""
-	Returns the cosine similarity btw 2 users.
+	def dm(self, user1, user2):
+		"""
+		Returns the Euclidean distance btw 2 users.
 
-	|user1|, |user2| are Counters where keys are itemIds and values are scores.
-	Used with Recommender, set lowDistMeansDissimilar=True.
-	"""
-	allKeys = set(user1) | set(user2)
-	vec1 = [user1[key] for key in allKeys]
-	vec2 = [user2[key] for key in allKeys]
-	return float(np.dot(vec1, vec2)) \
-					/ np.linalg.norm(vec1) / np.linalg.norm(vec2)
+		|user1|, |user2| are Counters where keys are itemIds and values are scores.
+		Used with Recommender, set lowDistMeansDissimilar=False.
+		"""
+		distSquared = 0
+		for itemId in user1:
+			if itemId in user2:
+				distSquared += (user1[itemId] - user2[itemId])**2
+		return sqrt(distSquared)
 
-def numMutuallyScoredItems(user1, user2):
-	"""
-	Returns the number of items that both users have scored.
+class CosineSimilarity():
+	def __init__(self):
+		self.lowDistMeansDissimilar = True
 
-	|user1|, |user2| are Counters where keys are itemIds and values are scores.
-	Used with Recommender, set lowDistMeansDissimilar=True.
-	"""
-	return len(set(user1.keys()) & set(user2.keys()))
+	def dm(self, user1, user2):
+		"""
+		Returns the cosine similarity btw 2 users.
 
-def sumCommonScore(user1, user2):
-	"""
-	Returns the sum of minimum scores for items both users have rated.
+		|user1|, |user2| are Counters where keys are itemIds and values are scores.
+		Used with Recommender, set lowDistMeansDissimilar=True.
+		"""
+		allKeys = set(user1) | set(user2)
+		vec1 = [user1[key] for key in allKeys]
+		vec2 = [user2[key] for key in allKeys]
+		return float(np.dot(vec1, vec2)) \
+						/ np.linalg.norm(vec1) / np.linalg.norm(vec2)
 
-	Used with Recommender, set lowDistMeansDissimilar=True.
-	"""
-	correlation = 0.0
-	for itemId in user1:
-		if itemId in user2:
-			correlation += min(user1[itemId], user2[itemId])
-	return correlation
+class NumMutuallyScoredItems():
+	def __init__(self):
+		self.lowDistMeansDissimilar = True
+
+	def dm(self, user1, user2):
+		"""
+		Returns the number of items that both users have scored.
+
+		|user1|, |user2| are Counters where keys are itemIds and values are scores.
+		Used with Recommender, set lowDistMeansDissimilar=True.
+		"""
+		return len(set(user1.keys()) & set(user2.keys()))
+
+class SumCommonScore():
+	def __init__(self):
+		self.lowDistMeansDissimilar = True
+
+	def dm(self, user1, user2):
+		"""
+		Returns the sum of minimum scores for items both users have rated.
+
+		Used with Recommender, set lowDistMeansDissimilar=True.
+		"""
+		correlation = 0.0
+		for itemId in user1:
+			if itemId in user2:
+				correlation += min(user1[itemId], user2[itemId])
+		return correlation
 
 
 # Recommender class -------------------------------------------------
@@ -206,7 +229,7 @@ class Recommender(object):
 
 	Code inspired from http://guidetodatamining.com.
 	"""
-	def __init__(self, users, distanceMetric, lowDistMeansDissimilar, k):
+	def __init__(self, users, distanceMetric, k):
 		"""
 		|users|: dict of dicts mapping users to their score for each item
 		|distanceMetric|: function to compute distances btw user profiles
@@ -217,8 +240,8 @@ class Recommender(object):
 		|k|: how many k-nearest neighbors to use in calculation
 		"""
 		self.users = users
-		self.distFn = distanceMetric
-		self.lowDistMeansDissimilar = lowDistMeansDissimilar
+		self.distFn = distanceMetric.dm
+		self.lowDistMeansDissimilar = distanceMetric.lowDistMeansDissimilar
 		self.k = k
 
 	def nearestNeighbors(self, tgtUserId):
@@ -284,7 +307,7 @@ def cacheRecsForFile(distanceMetric, dataFile, outputFile, verbose=False):
 	if verbose:
 		print
 		print 'Importing txt data from {} took {}s'.format(dataFile, time.time() - t)
-	rec = Recommender(userRatings, distanceMetric, True, 6)
+	rec = Recommender(userRatings, distanceMetric, 6)
 	t = time.time()
 	recsCache = rec.recommendForEveryUser(6)
 	if verbose:
@@ -299,17 +322,17 @@ def main(args):
 	distMetrics = []
 
 	if args.pearson_correlation:
-		distMetrics.append((pearsonCorrelation, 'pearson_correlation'))
+		distMetrics.append((PearsonCorrelation(), 'pearson_correlation'))
 	if args.manhattan_distance:
-		distMetrics.append((manhattanDistance, 'manhattan_distance'))
+		distMetrics.append((ManhattanDistance(), 'manhattan_distance'))
 	if args.euclidean_distance:
-		distMetrics.append((euclideanDistance, 'euclidean_distance'))
+		distMetrics.append((EuclideanDistance(), 'euclidean_distance'))
 	if args.cosine_similarity:
-		distMetrics.append((cosineSimilarity, 'cosine_similarity'))
+		distMetrics.append((CosineSimilarity(), 'cosine_similarity'))
 	if args.num_mutually_scored_items:
-		distMetrics.append((numMutuallyScoredItems, 'num_mutually_scored_items'))
+		distMetrics.append((NumMutuallyScoredItems(), 'num_mutually_scored_items'))
 	if args.sum_common_score:
-		distMetrics.append((sumCommonScore, 'sum_common_score'))
+		distMetrics.append((SumCommonScore(), 'sum_common_score'))
 
 	if len(distMetrics) == 0:
 		print 'Choose at least one distance metric'
