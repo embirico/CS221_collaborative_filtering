@@ -258,7 +258,8 @@ class Recommender(object):
 							 				#to weigh manhattan or euclidean dists
 			nbrRatings = self.users[nbrId]
 			for itemId in nbrRatings:
-				if itemId not in tgtUserRatings:
+				if True:
+				# if itemId not in tgtUserRatings: # TODO put back
 					recsDict[itemId] += nbrRatings[itemId] * weight
 		# Get sorted list of recs
 		recsDistsList = sorted(list(recsDict.items()),
@@ -269,12 +270,9 @@ class Recommender(object):
 	def recommendForEveryUser(self, nRecs):
 		"""
 		Returns a dict of no more than |nRecs| recommendations for each user
-		in the dataset.
-
-		TODO consider returning exactly |nRecs| recs of each user.
-		TODO consider creating a set of default recs.
+		in the dataset. (Scores not included)
 		"""
-		return {user : self.recommend(user, nRecs)[0] for user in self.users}
+		return {user : zip(*self.recommend(user, nRecs))[0] for user in self.users}
 		
 
 # Mini helpers ------------------------------------------------------
@@ -290,9 +288,11 @@ def testRecommenderForUser(tgtUserId, rec, userRatings, gameInfo):
 	for gameId in userRatings[tgtUserId]:
 		print '{} : {} : {}'.format(gameInfo[gameId][0], gameInfo[gameId][1],
 			userRatings[tgtUserId][gameId])
+	print
 	print 'AND WE RECOMMEND...'
-	for gameId in rec.recommend(tgtUserId, 6):
+	for gameId, _ in rec.recommend(tgtUserId, 6):
 		print '{} : {}'.format(gameInfo[gameId][0], gameInfo[gameId][1])
+	print
 	print
 
 def test1():
@@ -317,7 +317,7 @@ def testCachingOnLargeFile():
 	t = time.time()
 	userRatings = importUserPlaysAndLikesComposite('data/practice_data_6623.txt')
 	print 'Importing txt data took {}s'.format(time.time() - t)
-	rec = Recommender(userRatings, numMutuallyScoredItems, True, 6)
+	rec = Recommender(userRatings, sumCommonScore, True, 6)
 	t = time.time()
 	recsCache = rec.recommendForEveryUser(6)
 	print 'Creating cache object took {}s'.format(time.time() - t)
@@ -325,10 +325,16 @@ def testCachingOnLargeFile():
 	saveData(recsCache, 'data/recs_cache.pickle')
 	print 'Saving recs_cache.pickle took {}s'.format(time.time() - t)
 
+def testCacheLoading():
+	t = time.time()
+	cache = loadData('data/recs_cache.pickle')
+	print 'Loading data took {}s'.format(time.time() - t)
+
 
 # Main script -------------------------------------------------------
 if __name__ == '__main__':
 	testCachingOnLargeFile()
+	# test2()
 
 
 
